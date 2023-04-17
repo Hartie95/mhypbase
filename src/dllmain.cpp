@@ -5,9 +5,10 @@
 #include "hook.hpp"
 #include "util.hpp"
 
-DWORD WINAPI Thread(LPVOID lpParam)
+DWORD __stdcall Thread(LPVOID p)
 {
 	config::Load();
+	util::Log("Config loaded.");
 	util::DisableLogReport();
 	util::Log("Disabled log report.");
 
@@ -17,7 +18,7 @@ DWORD WINAPI Thread(LPVOID lpParam)
 		Sleep(1000);
 	}
 	util::Log("Waiting 5 sec for game initialize.");
-	Sleep(5000);
+	Sleep(config::GetWaitTime());
 	util::DisableVMProtect();
 	util::Log("Disabled vm protect.");
 
@@ -29,10 +30,13 @@ DWORD WINAPI Thread(LPVOID lpParam)
 	return 0;
 }
 
-BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
+DWORD __stdcall DllMain(HINSTANCE hInstance, DWORD fdwReason, LPVOID lpReserved)
 {
+	if (hInstance)
+		DisableThreadLibraryCalls(hInstance);
+
 	if (fdwReason == DLL_PROCESS_ATTACH)
-		if (HANDLE hThread = CreateThread(NULL, 0, Thread, NULL, 0, NULL))
+		if (HANDLE hThread = CreateThread(NULL, 0, Thread, hInstance, 0, NULL))
 			CloseHandle(hThread);
 	return TRUE;
 }

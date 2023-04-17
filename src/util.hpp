@@ -1,16 +1,24 @@
 #pragma once
 
 #include "pch.h"
+#include "winternl.h"
 
 namespace util
 {
+	HANDLE _out = NULL, _old_out = NULL;
+	HANDLE _err = NULL, _old_err = NULL;
+	HANDLE _in = NULL, _old_in = NULL;
+
 	void Log(const char* text)
 	{
-		std::cout << "[mhypbase] " << text << std::endl;
+		//std::cout << "[mhypbase] " << text << std::endl;
+		WriteConsoleA(_out, text, static_cast<DWORD>(strlen(text)), nullptr, nullptr);
 	}
 
 	void Logf(const char* fmt, ...)
 	{
+		if (!_out)
+        	return;
 		char text[1024];
 
 		va_list args;
@@ -68,40 +76,52 @@ namespace util
 
 	void InitConsole()
 	{
-		AllocConsole();
+		_old_out = GetStdHandle(STD_OUTPUT_HANDLE);
+		_old_err = GetStdHandle(STD_ERROR_HANDLE);
+		_old_in = GetStdHandle(STD_INPUT_HANDLE);
 
-		freopen_s((FILE**)stdout, "CONOUT$", "w", stdout);
-		freopen_s((FILE**)stderr, "CONOUT$", "w", stderr);
+		::AllocConsole() && ::AttachConsole(GetCurrentProcessId());
 
-		auto consoleWindow = GetConsoleWindow();
-		SetForegroundWindow(consoleWindow);
-		ShowWindow(consoleWindow, SW_RESTORE);
-		ShowWindow(consoleWindow, SW_SHOW);
+		_out = GetStdHandle(STD_OUTPUT_HANDLE);
+		_err = GetStdHandle(STD_ERROR_HANDLE);
+		_in = GetStdHandle(STD_INPUT_HANDLE);
+
+		SetConsoleMode(_out,
+			ENABLE_PROCESSED_OUTPUT | ENABLE_WRAP_AT_EOL_OUTPUT);
+
+		SetConsoleMode(_in,
+			ENABLE_INSERT_MODE | ENABLE_EXTENDED_FLAGS |
+			ENABLE_PROCESSED_INPUT | ENABLE_QUICK_EDIT_MODE);
 	}
 
 	void DisableLogReport()
 	{
-		char filename[MAX_PATH] = {};
-		GetModuleFileName(NULL, filename, MAX_PATH);
+		char szProcessPath[MAX_PATH]{};
+		GetModuleFileNameA(nullptr, szProcessPath, MAX_PATH);
 
-		auto path = std::filesystem::path(filename);
-		path = path.parent_path() / (path.stem().string() + "_Data") / "Plugins";
+		auto path = std::filesystem::path(szProcessPath);
+		auto ProcessName = path.filename().string();
+		ProcessName = ProcessName.substr(0, ProcessName.find_last_of('.'));
 
-		CreateFileW((path / "Astrolabe.dll").c_str(), GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-		CreateFileW((path / "MiHoYoMTRSDK.dll").c_str(), GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+		auto Astrolabe = path.parent_path() / (ProcessName + "_Data\\Plugins\\Astrolabe.dll");
+		auto MiHoYoMTRSDK = path.parent_path() / (ProcessName + "_Data\\Plugins\\MiHoYoMTRSDK.dll");
+
+		// open exclusive access to these two dlls
+		// so they cannot be loaded
+		HANDLE hFile = CreateFileA(Astrolabe.string().c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+		hFile = CreateFileA(MiHoYoMTRSDK.string().c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
 	}
 
 	// https://github.com/yubie-re/vmp-virtualprotect-bypass/blob/main/src/vp-patch.hpp
 	void DisableVMProtect()
 	{
-		DWORD old_protect = 0;
+		DWORD old = 0;
 		auto ntdll = GetModuleHandleA("ntdll.dll");
-		BYTE callcode = ((BYTE*)GetProcAddress(ntdll, "NtQuerySection"))[4] - 1;
-		BYTE restore[] = { 0x4C, 0x8B, 0xD1, 0xB8, callcode };
-		auto nt_vp = (BYTE*)GetProcAddress(ntdll, "NtProtectVirtualMemory");
-		VirtualProtect(nt_vp, sizeof(restore), PAGE_EXECUTE_READWRITE, &old_protect);
-		memcpy(nt_vp, restore, sizeof(restore));
-		VirtualProtect(nt_vp, sizeof(restore), old_protect, &old_protect);
+		bool linux = GetProcAddress(ntdll, "wine_get_version") != nullptr;
+		void* routine = linux ? (void*)NtPulseEvent : (void*)NtQuerySection;
+		VirtualProtect(NtProtectVirtualMemory, 1, PAGE_EXECUTE_READWRITE, &old);
+		*(uintptr_t*)NtProtectVirtualMemory = *(uintptr_t*)routine & ~(0xFFui64 << 32) | (uintptr_t)(*(uint32_t*)((uintptr_t)routine + 4) - 1) << 32;
+		VirtualProtect(NtProtectVirtualMemory, 1, old, &old);
 	}
 
 	// https://github.com/34736384/RSAPatch/blob/master/RSAPatch/Utils.cpp

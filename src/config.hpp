@@ -15,6 +15,7 @@ namespace config
 	static const char* public_rsa_key;
 	static const char* rsa_encrypt_key;
 	static const char* private_rsa_key;
+	static long waitTime;
 	static long magic_a;
 	static long magic_b;
 
@@ -97,6 +98,10 @@ namespace config
 	{
 		return private_rsa_key;
 	}
+	int GetWaitTime()
+	{
+		return waitTime;
+	}
 
 	void Load()
 	{
@@ -106,6 +111,7 @@ namespace config
 		{
 			util::InitConsole();
 		}
+		waitTime = GetLongValue("waitTime", 5000);
 		client_version = ini.GetValue("Offset", "ClientVersion", nullptr);
 		if (client_version == nullptr)
 		{

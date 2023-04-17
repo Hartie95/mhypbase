@@ -191,10 +191,10 @@ namespace hook
 		HookManager::install(app::MiHoYo__SDK__SDKUtil_RSAEncrypt, MiHoYo__SDK__SDKUtil_RSAEncrypt);
 		HookManager::install(app::MoleMole__MoleMoleSecurity_GetPublicRSAKey, MoleMole__MoleMoleSecurity_GetPublicRSAKey);
 		HookManager::install(app::MoleMole__MoleMoleSecurity_GetPrivateRSAKey, MoleMole__MoleMoleSecurity_GetPrivateRSAKey);
-		HookManager::install(app::MoleMole__RSAUtil_RSAEncrypt, MoleMole__RSAUtil_RSAEncrypt);
-		HookManager::install(app::MoleMole__RSAUtil_RSADecrypt, MoleMole__RSAUtil_RSADecrypt);
-		HookManager::install(app::MoleMole__RSAUtil_RSAVerifyHash, MoleMole__RSAUtil_RSAVerifyHash);
-		HookManager::install(app::MoleMole__RSAUtil_RSAVerifyData, MoleMole__RSAUtil_RSAVerifyData);
+		//HookManager::install(app::MoleMole__RSAUtil_RSAEncrypt, MoleMole__RSAUtil_RSAEncrypt);
+		//HookManager::install(app::MoleMole__RSAUtil_RSADecrypt, MoleMole__RSAUtil_RSADecrypt);
+		//HookManager::install(app::MoleMole__RSAUtil_RSAVerifyHash, MoleMole__RSAUtil_RSAVerifyHash);
+		//HookManager::install(app::MoleMole__RSAUtil_RSAVerifyData, MoleMole__RSAUtil_RSAVerifyData);
 		if (config::GetConfigChannel() != nullptr || config::GetConfigBaseUrl() != nullptr)
 		{
 			HookManager::install(app::UnityEngine__JsonUtility_FromJson, UnityEngine__JsonUtility_FromJson);
